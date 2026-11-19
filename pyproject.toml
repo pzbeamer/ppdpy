@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ppdpy"
+version = "0.1.0"
+description = "Python wrapper for PPD protein pocket detection (Zhao et al., Bioinformatics 2018): PDB in, pockets out"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Perry Beamer"}]
+requires-python = ">=3.8"
+dependencies = ["numpy", "scipy"]
+keywords = ["protein", "pocket detection", "binding site", "PPD", "ESES", "structural biology"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.optional-dependencies]
+pdb2pqr = ["pdb2pqr"]
+pandas = ["pandas"]
+all = ["pdb2pqr", "pandas"]
+test = ["pytest"]
+
+[project.urls]
+"PPD (original method)" = "https://github.com/rdzhao/PPD"
+"PPD paper" = "https://doi.org/10.1093/bioinformatics/bty598"
+
+[project.scripts]
+ppd = "ppdpy.cli:main"
+
+[tool.setuptools]
+packages = ["ppdpy"]
+
+[tool.setuptools.package-data]
+ppdpy = ["backend/*.sh", "backend/patches/*.patch"]
+
+[tool.pytest.ini_options]
+markers = ["slow: runs the compiled backend (needs `ppd build-backend`)"]

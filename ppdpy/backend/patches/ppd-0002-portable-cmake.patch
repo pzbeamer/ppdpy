@@ -1,0 +1,183 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a73fa0d..e18814e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,63 +1,104 @@
+-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+-
+-# Create project
+-PROJECT ( CavityDetection )
+-
+-SET ( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/" )
+-SET ( TBB_ROOT_DIR "/usr/lib/x86_64-linux-gnu" )
+-
+-# Find required libraries
+-FIND_PACKAGE ( OpenVDB REQUIRED )
+-FIND_PACKAGE ( OpenEXR REQUIRED )  
+-FIND_PACKAGE ( Boost REQUIRED COMPONENTS system thread )
+-FIND_PACKAGE ( TBB REQUIRED )
+-FIND_PACKAGE ( CGAL REQUIRED)
+-
+-FIND_PACKAGE(OpenMP)
+-IF (OPENMP_FOUND)
+-    SET ( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}" )
+-    SET ( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
+-    SET ( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}" )
+-ENDIF()
+-
+-INCLUDE(${CGAL_USE_FILE})
+-
+-# Project source files
+-SET ( SRC
+-  main.cpp
+-  CavityDetection.h
+-  CavityDetection.cpp
+-  nanoflann.hpp
+-  FlannUtils.h
+- )
+-# Create project 
+-ADD_EXECUTABLE ( CavityDetection
+-  ${SRC}
+-  )
+-
+-# Project libraries 
+-TARGET_LINK_LIBRARIES ( CavityDetection
+-  ${OPENVDB_LIBRARIES}
+-  ${OPENEXR_LIBRARIES}
+-  ${ILMBASE_LIBRARIES}
+-  ${Boost_SYSTEM_LIBRARY_DEBUG}
+-  ${Boost_THREAD_LIBRARY_DEBUG}
+-  ${Boost_SYSTEM_LIBRARY_RELEASE}
+-  ${Boost_THREAD_LIBRARY_RELEASE}
+-  ${TBB_LIBRARIES}  
+-  ${CGAL_LIBRARIES}
+-  ${CGAL_3RD_PARTY_LIBRARIES}
+-  )
+-
+-# Project includes
+-INCLUDE_DIRECTORIES ( ${OPENVDB_INCLUDE_DIRS} )
+-INCLUDE_DIRECTORIES ( ${OPENEXR_INCLUDE_DIR} )
+-INCLUDE_DIRECTORIES ( ${Boost_INCLUDE_DIRS} )
+-INCLUDE_DIRECTORIES ( ${TBB_INCLUDE_DIRS} )
+-
+-INCLUDE_DIRECTORIES ( .. ) # So they can simulate referencing installed headers
+-INCLUDE_DIRECTORIES ( . ) # So they can simulate referencing installed headers
+-
+-ADD_DEFINITIONS ( -pthread -fPIC )
++# Portable build for CavityDetection (Linux and macOS, GCC or Clang).
++# Dependencies: OpenVDB, TBB, Boost (headers; timer), CGAL (header-only, needs GMP/MPFR).
++# Easiest on macOS: the conda environment in environment.yml (see SETUP_MACOS.md),
++# then:  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j
++# The original Linux file is kept as CMakeLists.linux-original.txt.
++cmake_minimum_required(VERSION 3.16)
++project(CavityDetection CXX)
+ 
++set(CMAKE_CXX_STANDARD 17)
++set(CMAKE_CXX_STANDARD_REQUIRED ON)
++if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
++  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
++endif()
+ 
++# Prefer an active conda env, then Homebrew, for every find_* call.
++if(DEFINED ENV{CONDA_PREFIX})
++  list(PREPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
++endif()
++if(APPLE)
++  foreach(p /opt/homebrew /usr/local)
++    if(EXISTS "${p}")
++      list(APPEND CMAKE_PREFIX_PATH "${p}")
++    endif()
++  endforeach()
++endif()
++list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules")
++
++# ---- OpenVDB: its CMake config if installed, else the bundled simple finder
++#      (cmake_modules/FindOpenVDB.cmake: header + libopenvdb). OpenVDB's own
++#      FindOpenVDB.cmake is avoided on purpose: it insists on extra Boost components.
++find_package(OpenVDB CONFIG QUIET)
++if(NOT TARGET OpenVDB::openvdb)
++  find_package(OpenVDB MODULE REQUIRED)
++endif()
++
++# ---- TBB (oneTBB ships TBBConfig.cmake)
++find_package(TBB CONFIG QUIET)
++if(NOT TARGET TBB::tbb)
++  find_package(TBB REQUIRED)       # bundled cmake_modules/FindTBB.cmake
++endif()
++
++# ---- Boost: only headers are needed (boost/timer.hpp, deprecated API);
++#      boost_system is header-only since 1.69 and its stub library is gone in 1.89.
++find_package(Boost REQUIRED)
++add_compile_definitions(BOOST_TIMER_ENABLE_DEPRECATED)
++
++# ---- CGAL (header-only since 5.0)
++find_package(CGAL REQUIRED)
++
++# ---- OpenMP is optional (Apple clang has none unless libomp is installed)
++find_package(OpenMP)
++
++add_executable(CavityDetection main.cpp CavityDetection.cpp CavityDetection.h nanoflann.hpp FlannUtils.h)
++target_include_directories(CavityDetection PRIVATE ${CMAKE_SOURCE_DIR})
++
++if(TARGET OpenVDB::openvdb)
++  target_link_libraries(CavityDetection PRIVATE OpenVDB::openvdb)
++else()
++  # old bundled finder: plain library; add OpenVDB's Half/Imath dependency by hand
++  target_include_directories(CavityDetection PRIVATE ${OPENVDB_INCLUDE_DIRS} ${OpenVDB_INCLUDE_DIRS})
++  target_link_libraries(CavityDetection PRIVATE ${OPENVDB_LIBRARIES} ${OpenVDB_LIBRARIES})
++  # OpenVDB's half type comes from Imath (OpenVDB >= 9) or IlmBase Half (older)
++  find_package(Imath CONFIG QUIET)
++  if(TARGET Imath::Imath)
++    target_link_libraries(CavityDetection PRIVATE Imath::Imath)
++  else()
++    find_library(HALF_LIBRARY NAMES Half Half-2_5 Half-2_4)
++    if(HALF_LIBRARY)
++      target_link_libraries(CavityDetection PRIVATE ${HALF_LIBRARY})
++    endif()
++  endif()
++endif()
++if(TARGET TBB::tbb)
++  target_link_libraries(CavityDetection PRIVATE TBB::tbb)
++else()
++  target_include_directories(CavityDetection PRIVATE ${TBB_INCLUDE_DIRS})
++  target_link_libraries(CavityDetection PRIVATE ${TBB_LIBRARIES})
++endif()
++if(TARGET Boost::headers)
++  target_link_libraries(CavityDetection PRIVATE Boost::headers)
++else()
++  target_include_directories(CavityDetection PRIVATE ${Boost_INCLUDE_DIRS})
++endif()
++if(TARGET CGAL::CGAL)
++  target_link_libraries(CavityDetection PRIVATE CGAL::CGAL)
++elseif(CGAL_USE_FILE)
++  include(${CGAL_USE_FILE})
++  target_link_libraries(CavityDetection PRIVATE ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES})
++endif()
++if(OpenMP_CXX_FOUND)
++  target_link_libraries(CavityDetection PRIVATE OpenMP::OpenMP_CXX)
++endif()
++
++find_package(Threads REQUIRED)
++target_link_libraries(CavityDetection PRIVATE Threads::Threads)
++
++# GCC 14 needs these for the 2018 code; Clang does not understand them.
++if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
++  target_compile_options(CavityDetection PRIVATE -fpermissive -Wno-template-body -Werror=return-type)
++elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
++  # -ffp-contract=off: no fused multiply-add, so Apple-silicon results match x86 Linux
++  target_compile_options(CavityDetection PRIVATE -Wno-deprecated-declarations -Werror=return-type
++                         -ffp-contract=off)
++endif()
+diff --git a/cmake_modules/FindTBB.cmake b/cmake_modules/FindTBB.cmake
+index 0a1a5bb..3452abe 100644
+--- a/cmake_modules/FindTBB.cmake
++++ b/cmake_modules/FindTBB.cmake
+@@ -184,7 +184,7 @@ if(NOT TBB_FOUND)
+   ##################################
+ 
+   if(TBB_INCLUDE_DIRS)
+-    file(READ "${TBB_INCLUDE_DIRS}/tbb/tbb_stddef.h" _tbb_version_file)
++    file(READ "${TBB_INCLUDE_DIRS}/tbb/version.h" _tbb_version_file)
+     string(REGEX REPLACE ".*#define TBB_VERSION_MAJOR ([0-9]+).*" "\\1"
+         TBB_VERSION_MAJOR "${_tbb_version_file}")
+     string(REGEX REPLACE ".*#define TBB_VERSION_MINOR ([0-9]+).*" "\\1"

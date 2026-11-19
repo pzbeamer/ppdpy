@@ -1,0 +1,54 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fe24c43..0c782c3 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,17 +1,41 @@
+ project(MS_Intersection)
+ 
+ cmake_minimum_required(VERSION 3.12)
++# Patched for macOS (see SETUP_MACOS.md in PPD-master); original: CMakeLists.original.txt
+ 
+ set(CMAKE_CXX_STANDARD 17)
+ 
+-if(APPLE)
+-    set(OpenMP_C_LIB_NAMES "libomp")
+-    set(OpenMP_CXX_LIB_NAMES "libomp")
+-    set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/include")
+-    set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/include")
+-    set(OpenMP_omp_LIBRARY "/usr/local/lib/libomp.dylib")
+-    set(OpenMP_libomp_LIBRARY "/usr/local/lib/libomp.dylib")
+-endif(APPLE)
++# macOS: Apple clang has no OpenMP of its own. Point CMake at libomp from the
++# active conda env (llvm-openmp) or Homebrew (brew install libomp). The original
++# file hard-coded /usr/local, which is wrong on Apple-silicon Homebrew (/opt/homebrew).
++if(APPLE AND NOT OpenMP_CXX_FLAGS)
++    set(_omp_prefix "")
++    if(DEFINED ENV{CONDA_PREFIX} AND EXISTS "$ENV{CONDA_PREFIX}/lib/libomp.dylib")
++        set(_omp_prefix "$ENV{CONDA_PREFIX}")
++    else()
++        execute_process(COMMAND brew --prefix libomp OUTPUT_VARIABLE _brew_omp
++                        OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
++        if(_brew_omp AND EXISTS "${_brew_omp}/lib/libomp.dylib")
++            set(_omp_prefix "${_brew_omp}")
++        endif()
++    endif()
++    if(_omp_prefix AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
++        set(OpenMP_C_LIB_NAMES "omp")
++        set(OpenMP_CXX_LIB_NAMES "omp")
++        set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I${_omp_prefix}/include")
++        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I${_omp_prefix}/include")
++        set(OpenMP_omp_LIBRARY "${_omp_prefix}/lib/libomp.dylib")
++    endif()
++endif()
++
++if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
++    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
++endif()
++
++# no fused multiply-add on arm64 so surfaces match the x86 Linux runs
++if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
++    add_compile_options(-ffp-contract=off)
++endif()
+ 
+ find_package(OpenMP REQUIRED)
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")

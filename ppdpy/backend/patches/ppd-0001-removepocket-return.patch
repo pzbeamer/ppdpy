@@ -1,0 +1,13 @@
+diff --git a/CavityDetection.cpp b/CavityDetection.cpp
+index e24d5a3..4d898d3 100644
+--- a/CavityDetection.cpp
++++ b/CavityDetection.cpp
+@@ -1563,6 +1563,8 @@ int CavityDetection::RemovePocket(std::stack<openvdb::Coord> pocketS)
+ 	_volume.pop_back();
+ 	_area.pop_back();
+ 	_depth.pop_back();
++
++	return 1; // was missing: falling off a non-void function is undefined; GCC 13+ traps it (SIGILL)
+ }
+ 
+ int CavityDetection::OutputInfo(double time)

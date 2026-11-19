@@ -1,0 +1,70 @@
+cff-version: 1.2.0
+message: >-
+  ppdpy is a Python wrapper. If you use it, please cite the PPD paper (preferred citation)
+  and the ESES and PDB2PQR papers for the methods that do the work.
+title: "ppdpy: a Python wrapper for PPD protein pocket detection"
+type: software
+license: MIT
+authors:
+  - given-names: Perry
+    family-names: Beamer
+version: 0.1.0
+preferred-citation:
+  type: article
+  title: "Protein pocket detection via convex hull surface evolution and associated Reeb graph"
+  authors:
+    - given-names: Rundong
+      family-names: Zhao
+    - given-names: Zixuan
+      family-names: Cang
+    - given-names: Yiying
+      family-names: Tong
+    - given-names: Guo-Wei
+      family-names: Wei
+  journal: Bioinformatics
+  volume: 34
+  issue: 17
+  start: i830
+  end: i837
+  year: 2018
+  doi: 10.1093/bioinformatics/bty598
+references:
+  - type: software
+    title: "PPD: Protein Pocket Detection"
+    authors:
+      - given-names: Rundong
+        family-names: Zhao
+    repository-code: "https://github.com/rdzhao/PPD"
+  - type: article
+    title: "ESES: Software for Eulerian solvent excluded surface"
+    authors:
+      - given-names: Beibei
+        family-names: Liu
+      - given-names: Bao
+        family-names: Wang
+      - given-names: Rundong
+        family-names: Zhao
+      - given-names: Yiying
+        family-names: Tong
+      - given-names: Guo-Wei
+        family-names: Wei
+    journal: "Journal of Computational Chemistry"
+    volume: 38
+    issue: 7
+    start: 446
+    end: 466
+    year: 2017
+    doi: 10.1002/jcc.24682
+  - type: article
+    title: "Improvements to the APBS biomolecular solvation software suite"
+    authors:
+      - given-names: Elizabeth
+        family-names: Jurrus
+      - name: "et al."
+    journal: "Protein Science"
+    volume: 27
+    issue: 1
+    start: 112
+    end: 128
+    year: 2018
+    doi: 10.1002/pro.3280

@@ -1,0 +1,27 @@
+# Everything needed to build the backend and run ppdpy (Linux or macOS):
+#   conda env create -f environment.yml && conda activate ppdpy
+#   pip install -e . && ppd build-backend && ppd doctor
+name: ppdpy
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pandas
+  - pip
+  - git
+  - cmake>=3.16
+  - make
+  - c-compiler
+  - cxx-compiler
+  - llvm-openmp
+  - openvdb
+  - imath
+  - tbb-devel
+  - libboost-devel
+  - cgal-cpp
+  - gmp
+  - mpfr
+  - pip:
+      - pdb2pqr
